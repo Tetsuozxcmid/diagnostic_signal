@@ -1,0 +1,4 @@
+#ifndef SIGNALWINDOWS_H
+#define SIGNALWINDOWS_H
+
+#endif // SIGNALWINDOWS_H

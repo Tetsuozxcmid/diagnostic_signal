@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SignalWindows</class>
+ <widget class="QMainWindow" name="SignalWindows">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Диагностика</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">background-color:rgb(224, 224, 224);</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="2" column="1">
+     <widget class="QCustomPlot" name="widget_10" native="true"/>
+    </item>
+    <item row="3" column="0">
+     <widget class="QCustomPlot" name="widget_13" native="true"/>
+    </item>
+    <item row="2" column="3">
+     <widget class="QCustomPlot" name="widget_12" native="true"/>
+    </item>
+    <item row="1" column="2">
+     <widget class="QCustomPlot" name="widget_7" native="true"/>
+    </item>
+    <item row="0" column="2">
+     <widget class="QCustomPlot" name="widget_3" native="true"/>
+    </item>
+    <item row="1" column="1">
+     <widget class="QCustomPlot" name="widget_6" native="true"/>
+    </item>
+    <item row="7" column="0" colspan="4">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QPushButton" name="pb_params_signal">
+        <property name="text">
+         <string>В параметры</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="p_signal_stop_all">
+        <property name="text">
+         <string>Стоп всех каналов</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="p_button_main">
+        <property name="text">
+         <string>В меню</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="p_signal_start_all">
+        <property name="text">
+         <string>Запуск всех каналов</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="0" column="1">
+     <widget class="QCustomPlot" name="widget_2" native="true"/>
+    </item>
+    <item row="0" column="3">
+     <widget class="QCustomPlot" name="widget_4" native="true"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QCustomPlot" name="widget_9" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QCustomPlot" name="widget" native="true"/>
+    </item>
+    <item row="2" column="2">
+     <widget class="QCustomPlot" name="widget_11" native="true"/>
+    </item>
+    <item row="1" column="3">
+     <widget class="QCustomPlot" name="widget_8" native="true"/>
+    </item>
+    <item row="1" column="0">
+     <widget class="QCustomPlot" name="widget_5" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QCustomPlot" name="widget_14" native="true"/>
+    </item>
+    <item row="3" column="2">
+     <widget class="QCustomPlot" name="widget_15" native="true"/>
+    </item>
+    <item row="3" column="3">
+     <widget class="QCustomPlot" name="widget_16" native="true"/>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1920</width>
+     <height>29</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QCustomPlot</class>
+   <extends>QWidget</extends>
+   <header location="global">qcustomplot.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
