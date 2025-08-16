@@ -13,7 +13,6 @@ class Paramswindows : public QMainWindow
 
 public:
     explicit Paramswindows(QWidget *parent = nullptr);
-
     ~Paramswindows();
 
 private slots:

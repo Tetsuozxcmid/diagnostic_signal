@@ -19,9 +19,7 @@ public:
 
 private slots:
     void on_p_button_exit_clicked();
-
     void on_p_button_params_clicked();
-
     void on_p_button_start_clicked();
 
 private:

@@ -37,8 +37,6 @@ void MainWindow::on_p_button_exit_clicked()
     int res = msgbox.exec();
     if (res == QMessageBox::Yes) {
         QApplication::quit();
-
-    } else {
     }
 }
 
@@ -65,7 +63,7 @@ void MainWindow::on_p_button_params_clicked()
 
 void MainWindow::on_p_button_start_clicked()
 {
-    SignalWindows *signal = new SignalWindows;
+    SignalWindows *signal = new SignalWindows(this); // Исправлено: передаем this как родитель
     signal->show();
     MainWindow::hide();
 }
