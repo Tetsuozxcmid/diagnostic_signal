@@ -17,7 +17,7 @@
 #include <fftw3.h>
 #include <iostream>
 #include <vector>
-
+//PISUN
 SignalWindows::SignalWindows(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::SignalWindows)
