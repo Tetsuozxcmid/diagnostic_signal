@@ -19,7 +19,21 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="2" column="1">
-     <widget class="QCustomPlot" name="widget_10" native="true"/>
+     <widget class="QCustomPlot" name="widget_10" native="true">
+      <widget class="QPushButton" name="pb_params_update">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>90</y>
+         <width>191</width>
+         <height>41</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>обновить графики</string>
+       </property>
+      </widget>
+     </widget>
     </item>
     <item row="3" column="0">
      <widget class="QCustomPlot" name="widget_13" native="true"/>
@@ -123,7 +137,7 @@
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>23</height>
+     <height>20</height>
     </rect>
    </property>
   </widget>

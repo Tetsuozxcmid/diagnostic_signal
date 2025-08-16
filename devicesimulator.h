@@ -8,11 +8,11 @@ public:
     double generateSample();
 
 private:
-    double A;      // Амплитуда
-    double f;      // Частота сигнала (Гц)
-    double fd;     // Частота дискретизации (Гц)
-    double t;      // Текущее время (с)
-    static const double PI; // Объявление статической константы (переименовано)
+    double A;
+    double f;
+    double fd;
+    double t;
+    static const double PI;
 };
 
 #endif // DEVICESIMULATOR_H

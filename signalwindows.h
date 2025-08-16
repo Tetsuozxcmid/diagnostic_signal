@@ -40,6 +40,8 @@ private slots:
     void on_p_signal_start_all_clicked();
     void updateAllChannels();
 
+    void on_pb_params_update_clicked();
+
 private:
     Ui::SignalWindows *ui;
     bool m_rightButtonPressed = false;
@@ -59,6 +61,7 @@ private:
 
     void initializeSimulators(const QMap<QString, QString>& params);
     void setupPlot(int index);
+
 };
 
 #endif // SIGNALWINDOWS_H

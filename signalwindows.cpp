@@ -25,17 +25,17 @@ SignalWindows::SignalWindows(QWidget *parent)
 {
     ui->setupUi(this);
 
-    // Инициализация данных для 16 каналов
+
     m_channelData.resize(16);
     for (int i = 0; i < 16; ++i) {
-        m_channelData[i].resize(100, 0.0); // Начальное значение
+        m_channelData[i].resize(100, 0.0);
     }
 
-    // Настройка таймера обновления
+
     connect(&m_updateTimer, &QTimer::timeout, this, &SignalWindows::updateAllChannels);
     m_updateTimer.start(30); // 30 мс ~ 33 FPS
 
-    // Инициализация симуляторов
+
     QMap<QString, QString> params;
     QString appDir = QCoreApplication::applicationDirPath();
     QString filePath = appDir + "/params.ini";
@@ -71,7 +71,7 @@ SignalWindows::SignalWindows(QWidget *parent)
 
     initializeSimulators(params);
 
-    // Настройка графиков
+
     QCustomPlot *plots[] = {ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
                             ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
                             ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
@@ -81,7 +81,7 @@ SignalWindows::SignalWindows(QWidget *parent)
         setupPlot(i);
     }
 
-    // Настройка анимации
+
     m_phaseAnimation->setStartValue(0);
     m_phaseAnimation->setEndValue(0);
     m_phaseAnimation->setDuration(1000);
@@ -141,7 +141,12 @@ void SignalWindows::setupPlot(int index)
     case 15: plot = ui->widget_16; break;
     }
 
-    if (!plot) return;
+    if (!plot) {
+        qDebug() << "Ошибка: виджет QCustomPlot для канала" << index << "не найден.";
+        return;
+    }
+
+    qDebug() << "Инициализация графика для канала" << index;
 
     plot->clearGraphs();
     plot->addGraph();
@@ -162,18 +167,18 @@ void SignalWindows::setupPlot(int index)
 
 void SignalWindows::updateAllChannels()
 {
-    // Обновление данные для каждого канала
+
     for (int i = 0; i < 16; ++i) {
         double newValue = m_simulators[i]->generateSample();
         m_channelData[i].append(newValue);
 
-        // Ограничение количества точек
+
         if (m_channelData[i].size() > 100) {
             m_channelData[i].removeFirst();
         }
     }
 
-    // Обновление графиков
+
     QCustomPlot *plots[] = {ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
                             ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
                             ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
@@ -395,3 +400,72 @@ void SignalWindows::on_p_signal_start_all_clicked()
 {
     m_phaseAnimation->start();
 }
+
+
+void SignalWindows::on_pb_params_update_clicked()
+{
+    qDebug() << "Обновление параметров...";
+
+    // Чтение параметров из файла params.ini
+    QMap<QString, QString> params;
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString filePath = appDir + "/params.ini";
+    QFile paramFile(filePath);
+
+    if (!paramFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this,
+                              "Ошибка",
+                              "Не удалось открыть файл params.ini!\nПараметры не обновлены.");
+        qDebug() << "Ошибка: файл params.ini не найден или не может быть открыт.";
+        return;
+    }
+
+    QTextStream paramStream(&paramFile);
+    while (!paramStream.atEnd()) {
+        QString line = paramStream.readLine();
+        QStringList parts = line.split("=");
+        if (parts.size() == 2) {
+            params[parts[0].trimmed()] = parts[1].trimmed();
+        }
+    }
+    paramFile.close();
+
+    QStringList requiredParams = {"param", "param2", "param5", "param12", "param8"};
+    for (const QString &param : requiredParams) {
+        if (!params.contains(param)) {
+            QMessageBox::critical(this,
+                                  "Ошибка",
+                                  QString("В файле params.ini отсутствует обязательный параметр: %1")
+                                      .arg(param));
+            qDebug() << "Ошибка: отсутствует параметр" << param;
+            return;
+        }
+    }
+
+    // Обновление симуляторов
+    double A = params["param"].toDouble();
+    double f = params["param2"].toDouble();
+    double fd = params["param5"].toDouble();
+
+    qDebug() << "Обновленные параметры: A =" << A << ", f =" << f << ", fd =" << fd;
+
+    // Очистка старых симуляторов
+    qDeleteAll(m_simulators);
+    m_simulators.clear();
+
+    // Создание новых симуляторов
+    for (int i = 0; i < 16; ++i) {
+        double channelF = f * (i + 1); // Пример: каждый канал имеет другую частоту
+        DeviceSimulator *simulator = new DeviceSimulator(A, channelF, fd);
+        m_simulators.append(simulator);
+        qDebug() << "Обновлен симулятор для канала" << i << "с частотой" << channelF;
+    }
+
+    // Очистка данных каналов
+    for (int i = 0; i < 16; ++i) {
+        m_channelData[i].clear();
+    }
+
+    qDebug() << "Параметры успешно обновлены.";
+}
+
