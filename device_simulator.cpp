@@ -1,31 +1,33 @@
 #include "device_simulator.h"
 #include <cmath>
 #include <random>
-device_simulator::device_simulator(int numChannels):numChannels(numChannels),channelFrequencies(numChannels)
+device_simulator::device_simulator(int numChannels)
+    : numChannels(numChannels)
+    , channelFrequencies(numChannels)
 {
-for(int i = 0; i < numChannels; ++i){
-    channelFrequencies[i] = 50.0 + i * 20.0;
+    for (int i = 0; i < numChannels; ++i) {
+        channelFrequencies[i] = 50.0 + i * 20.0;
+    }
 }
-
-}
-QVector<double>device_simulator::readData(int samples){
-    QVector<double>channels;
+QVector<double> device_simulator::readData(int samples)
+{
+    QVector<double> channels;
     const double sampleRate = 1000.0;
-    for(int ch = 0; ch < numChannels; ++ch){
-        auto signal = generateSineWave(samples,channelFrequencies[ch],sampleRate);
-      //  auto noisySignal = addNoise(signal);
+    for (int ch = 0; ch < numChannels; ++ch) {
+        auto signal = generateSineWave(samples, channelFrequencies[ch], sampleRate);
+        //  auto noisySignal = addNoise(signal);
 
-     //   channels.push_back(noisySignal);
+        //   channels.push_back(noisySignal);
     }
     return channels;
-
 }
 
-QVector<double>device_simulator::generateSineWave(int samples, double frequency, double sampleRate) {
-    QVector<double>signal(samples);
-    for (int i =0;i <samples;++i) {
-        double t = i/sampleRate;
-        signal[i] = sin(2 * M_PI *frequency * t);
+QVector<double> device_simulator::generateSineWave(int samples, double frequency, double sampleRate)
+{
+    QVector<double> signal(samples);
+    for (int i = 0; i < samples; ++i) {
+        double t = i / sampleRate;
+        signal[i] = sin(2 * M_PI * frequency * t);
     }
 
     return signal;
@@ -43,6 +45,3 @@ QVector<double>device_simulator::generateSineWave(int samples, double frequency,
     }
   return noisySignal; dimaZ
 } */
-
-
-

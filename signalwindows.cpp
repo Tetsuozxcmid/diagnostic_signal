@@ -1,40 +1,48 @@
 #include "signalwindows.h"
+#include <QDebug>
+#include <QDir>
+#include <QFile>
+#include <QFileDialog>
+#include <QMenu>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QTextStream>
+#include <QVector>
+#include <QWheelEvent>
+#include "device_simulator.h"
 #include "mainwindow.h"
 #include "paramswindows.h"
 #include "ui_signalwindows.h"
-#include "device_simulator.h"
-#include <QMessageBox>
-#include <QDebug>
-#include <QVector>
-#include <fftw3.h>
 #include <cmath>
-#include <QFile>
-#include <QTextStream>
-#include <QDir>
-#include <QWheelEvent>
-#include <QMenu>
-#include <QFileDialog>
-#include <QPushButton>
-#include <vector>
+#include <fftw3.h>
 #include <iostream>
+#include <vector>
 
-
-SignalWindows::SignalWindows(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::SignalWindows),
-    m_phaseShift(0)
+SignalWindows::SignalWindows(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::SignalWindows)
+    , m_phaseShift(0)
 {
     ui->setupUi(this);
 
+    QCustomPlot *plots[] = {ui->widget,
+                            ui->widget_2,
+                            ui->widget_3,
+                            ui->widget_4,
+                            ui->widget_5,
+                            ui->widget_6,
+                            ui->widget_7,
+                            ui->widget_8,
+                            ui->widget_9,
+                            ui->widget_10,
+                            ui->widget_11,
+                            ui->widget_12,
+                            ui->widget_13,
+                            ui->widget_14,
+                            ui->widget_15,
+                            ui->widget_16};
 
-    QCustomPlot* plots[] = {
-        ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
-        ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
-        ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
-        ui->widget_13, ui->widget_14, ui->widget_15, ui->widget_16
-    };
-
-    for (QCustomPlot* plot : plots) {
+    for (QCustomPlot *plot : plots) {
         plot->setInteraction(QCP::iRangeZoom, true);
         plot->setInteraction(QCP::iRangeDrag, true);
         plot->setSelectionRectMode(QCP::srmNone);
@@ -57,7 +65,9 @@ SignalWindows::SignalWindows(QWidget *parent) :
     QFile paramFile(filePath);
 
     if (!paramFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::critical(this, "Ошибка", "Не удалось открыть файл params.ini!\nГрафики не будут построены.");
+        QMessageBox::critical(this,
+                              "Ошибка",
+                              "Не удалось открыть файл params.ini!\nГрафики не будут построены.");
         return;
     }
 
@@ -72,14 +82,16 @@ SignalWindows::SignalWindows(QWidget *parent) :
     paramFile.close();
 
     QStringList requiredParams = {"param", "param2", "param5", "param12", "param8"};
-    for (const QString& param : requiredParams) {
+    for (const QString &param : requiredParams) {
         if (!params.contains(param)) {
-            QMessageBox::critical(this, "Ошибка",
-                                  QString("В файле params.ini отсутствует обязательный параметр: %1").arg(param));
+            QMessageBox::critical(this,
+                                  "Ошибка",
+                                  QString(
+                                      "В файле params.ini отсутствует обязательный параметр: %1")
+                                      .arg(param));
             return;
         }
     }
-
 
     double A = params["param"].toDouble();
     double f = params["param2"].toDouble();
@@ -89,7 +101,7 @@ SignalWindows::SignalWindows(QWidget *parent) :
     int N = n2 - n1;
     const double pi = 3.14159265358979323846;
     device_simulator *dev_sim = new device_simulator;
-     //  QVec<double> J = dev_sim->generateSineWave(3,3,3);
+    //  QVec<double> J = dev_sim->generateSineWave(3,3,3);
     m_originalX.resize(N);
     m_originalRe.resize(N);
     m_originalIm.resize(N);
@@ -99,25 +111,24 @@ SignalWindows::SignalWindows(QWidget *parent) :
 
     for (int i = 0; i < N; i++) {
         m_originalX[i] = n1 + i;
-        m_originalRe[i] =  cos(2 * M_PI * f * m_originalX[i] / fd); //косинусоидная тема
-        m_originalIm[i] =  dev_sim->generateSineWave(N,f,fd)[i]; //синусоидная тема
+        m_originalRe[i] = cos(2 * M_PI * f * m_originalX[i] / fd); //косинусоидная тема
+        m_originalIm[i] = dev_sim->generateSineWave(N, f, fd)[i]; //синусоидная тема
     }
 
-    fftw_complex *fftIn = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
-    fftw_complex *fftOut = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    fftw_complex *fftIn = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * N);
+    fftw_complex *fftOut = (fftw_complex *) fftw_malloc(sizeof(fftw_complex) * N);
 
     for (int i = 0; i < N; i++) {
         fftIn[i][0] = m_originalRe[i];
         fftIn[i][1] = m_originalIm[i];
-
     }
 
     fftw_plan fftPlan = fftw_plan_dft_1d(N, fftIn, fftOut, FFTW_FORWARD, FFTW_ESTIMATE);
     fftw_execute(fftPlan);
 
     for (int i = 0; i < N; i++) {
-        m_originalSpectrum[i] = sqrt(fftOut[i][0]*fftOut[i][0] + fftOut[i][1]*fftOut[i][1]);
-        m_freq[i] = (i <= N/2) ? i * fd/N : (i - N) * fd/N; //формула найквиста
+        m_originalSpectrum[i] = sqrt(fftOut[i][0] * fftOut[i][0] + fftOut[i][1] * fftOut[i][1]);
+        m_freq[i] = (i <= N / 2) ? i * fd / N : (i - N) * fd / N; //формула найквиста
     }
     m_animatedSpectrum = m_originalSpectrum;
 
@@ -130,20 +141,21 @@ SignalWindows::SignalWindows(QWidget *parent) :
     minY = std::min(minY, *std::min_element(m_originalIm.constBegin(), m_originalIm.constEnd()));
     maxY = std::max(maxY, *std::max_element(m_originalIm.constBegin(), m_originalIm.constEnd()));
 
-    double minSpec = *std::min_element(m_originalSpectrum.constBegin(), m_originalSpectrum.constEnd());
-    double maxSpec = *std::max_element(m_originalSpectrum.constBegin(), m_originalSpectrum.constEnd());
+    double minSpec = *std::min_element(m_originalSpectrum.constBegin(),
+                                       m_originalSpectrum.constEnd());
+    double maxSpec = *std::max_element(m_originalSpectrum.constBegin(),
+                                       m_originalSpectrum.constEnd());
 
-    const int numPlots = sizeof(plots)/sizeof(plots[0]);
+    const int numPlots = sizeof(plots) / sizeof(plots[0]);
     // device_simulator *dev_sim1 = new device_simulator;
     for (int i = 0; i < numPlots; i++) {
-      //  double h = dev_sim->readData(N)[3];
+        //  double h = dev_sim->readData(N)[3];
 
-        QCustomPlot* plot = plots[i];
+        QCustomPlot *plot = plots[i];
         plot->clearGraphs();
 
         plot->setBackground(QBrush(QColor(30, 30, 40)));
         plot->axisRect()->setBackground(QBrush(QColor(50, 50, 60)));
-
 
         QPen gridPen(QColor(100, 100, 120), 0.5, Qt::DotLine);
         plot->xAxis->grid()->setPen(gridPen);
@@ -154,40 +166,46 @@ SignalWindows::SignalWindows(QWidget *parent) :
         plot->yAxis->grid()->setSubGridVisible(true);
 
         if (i % 2 == 0) {
-
             plot->addGraph();
             plot->graph(0)->setData(m_freq, m_originalSpectrum);
             plot->graph(0)->setPen(QPen(QColor(100, 255, 100), 1.5));
-            plot->graph(0)->setName(QString("A=%4 , f=%5 Hz, fd=%1 Hz, N=%2 ,Канал=%3").arg(params["param5"]).arg(N).arg(i+1).arg(params["param"]).arg(params["param2"]));
+            plot->graph(0)->setName(QString("A=%4 , f=%5 Hz, fd=%1 Hz, N=%2 ,Канал=%3")
+                                        .arg(params["param5"])
+                                        .arg(N)
+                                        .arg(i + 1)
+                                        .arg(params["param"])
+                                        .arg(params["param2"]));
 
             plot->yAxis->setRange(minSpec, maxSpec);
-            plot->xAxis->setRange(-fd/2, fd/2);
+            plot->xAxis->setRange(-fd / 2, fd / 2);
             plot->xAxis->setTickLabels(false);
             plot->yAxis->setTickLabels(false);
             plot->legend->setVisible(false);
             plot->legend->setBrush(QBrush(QColor(70, 70, 80, 200)));
         } else {
-
             plot->addGraph();
             plot->graph(0)->setData(m_freq, m_originalSpectrum);
             plot->graph(0)->setPen(QPen(QColor(100, 255, 100), 1.5));
-            plot->graph(0)->setName(QString("A=%4 , f=%5 Hz, fd=%1 Hz, N=%2 ,Канал=%3").arg(params["param5"]).arg(N).arg(i+1).arg(params["param"]).arg(params["param2"]));
-          // plot->xAxis->setLabel("Frequency (Hz)");
-          //  plot->yAxis->setLabel("Magnitude");
+            plot->graph(0)->setName(QString("A=%4 , f=%5 Hz, fd=%1 Hz, N=%2 ,Канал=%3")
+                                        .arg(params["param5"])
+                                        .arg(N)
+                                        .arg(i + 1)
+                                        .arg(params["param"])
+                                        .arg(params["param2"]));
+            // plot->xAxis->setLabel("Frequency (Hz)");
+            //  plot->yAxis->setLabel("Magnitude");
             plot->yAxis->setRange(minSpec, maxSpec);
-            plot->xAxis->setRange(-fd/2, fd/2);
+            plot->xAxis->setRange(-fd / 2, fd / 2);
             plot->xAxis->setTickLabels(false);
             plot->yAxis->setTickLabels(false);
             plot->legend->setVisible(false);
             plot->legend->setBrush(QBrush(QColor(70, 70, 80, 200)));
         }
 
-
         plot->legend->setTextColor(Qt::white);
         plot->legend->setBorderPen(QPen(QColor(100, 100, 120), 0.5));
         plot->legend->setFont(QFont("Arial", 9));
-        plot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop|Qt::AlignLeft);
-
+        plot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop | Qt::AlignLeft);
 
         plot->xAxis->setLabelColor(Qt::white);
         plot->yAxis->setLabelColor(Qt::white);
@@ -201,8 +219,6 @@ SignalWindows::SignalWindows(QWidget *parent) :
         plot->replot();
         plot->show();
     }
-
-
 }
 
 SignalWindows::~SignalWindows()
@@ -212,15 +228,15 @@ SignalWindows::~SignalWindows()
 
 void SignalWindows::handlePlotClick(QMouseEvent *event)
 {
-    QCustomPlot* clickedPlot = qobject_cast<QCustomPlot*>(sender());
-    if (!clickedPlot) return;
+    QCustomPlot *clickedPlot = qobject_cast<QCustomPlot *>(sender());
+    if (!clickedPlot)
+        return;
 
     if (event->button() == Qt::RightButton) {
         clickedPlot->setSelectionRectMode(QCP::srmSelect);
         clickedPlot->setInteraction(QCP::iRangeDrag, false);
         m_rightButtonPressed = true;
-    }
-    else if (event->button() == Qt::LeftButton) {
+    } else if (event->button() == Qt::LeftButton) {
         clickedPlot->setSelectionRectMode(QCP::srmNone);
         clickedPlot->setInteraction(QCP::iRangeDrag, true);
         m_rightButtonPressed = false;
@@ -235,18 +251,18 @@ void SignalWindows::handlePlotRelease(QMouseEvent *event)
 
 void SignalWindows::handleDoubleClick(QMouseEvent *event)
 {
+    QCustomPlot *clickedPlot = qobject_cast<QCustomPlot *>(sender());
 
-    QCustomPlot* clickedPlot = qobject_cast<QCustomPlot*>(sender());
-
-    if (!clickedPlot || event->button() != Qt::LeftButton) return;
+    if (!clickedPlot || event->button() != Qt::LeftButton)
+        return;
 
     QMenu menu(this);
     QAction *toggleAction = menu.addAction("Показать/Скрыть данные");
     QAction *saveAction = menu.addAction("Сохранить график");
-   // QAction *statsAction = menu.addAction("Статистика");
+    // QAction *statsAction = menu.addAction("Статистика");
     QAction *animationAction = menu.addAction(
-        m_phaseAnimation->state() == QAbstractAnimation::Running ?
-            "Остановить анимацию" : "Запустить анимацию");
+        m_phaseAnimation->state() == QAbstractAnimation::Running ? "Остановить анимацию"
+                                                                 : "Запустить анимацию");
 
     QAction *selected = menu.exec(clickedPlot->mapToGlobal(event->pos()));
 
@@ -254,26 +270,28 @@ void SignalWindows::handleDoubleClick(QMouseEvent *event)
         bool isVisible = clickedPlot->legend->visible();
         clickedPlot->legend->setVisible(!isVisible);
         clickedPlot->replot();
-    }
-    else if (selected == saveAction) {
-        QString fileName = QFileDialog::getSaveFileName(this, "Сохранить график", "", "PNG (*.png);;JPEG (*.jpg)");
+    } else if (selected == saveAction) {
+        QString fileName = QFileDialog::getSaveFileName(this,
+                                                        "Сохранить график",
+                                                        "",
+                                                        "PNG (*.png);;JPEG (*.jpg)");
         if (!fileName.isEmpty()) {
             clickedPlot->savePng(fileName);
         }
-    }
-    else if (selected == animationAction) {
+    } else if (selected == animationAction) {
         if (m_phaseAnimation->state() == QAbstractAnimation::Running) {
             m_phaseAnimation->pause();
         } else {
-              m_phaseAnimation->start();
+            m_phaseAnimation->start();
         }
     }
 }
 
-void SignalWindows::handleZoom(QWheelEvent* event)
+void SignalWindows::handleZoom(QWheelEvent *event)
 {
-    QCustomPlot* plot = qobject_cast<QCustomPlot*>(sender());
-    if (!plot) return;
+    QCustomPlot *plot = qobject_cast<QCustomPlot *>(sender());
+    if (!plot)
+        return;
 
     QCPRange xRange = plot->xAxis->range();
     QCPRange yRange = plot->yAxis->range();
@@ -299,11 +317,7 @@ void SignalWindows::handleZoom(QWheelEvent* event)
 
 void SignalWindows::on_p_signal_stop_all_clicked()
 {
-
-       m_phaseAnimation->stop();
-
-
-
+    m_phaseAnimation->stop();
 }
 
 void SignalWindows::on_p_button_main_clicked()
@@ -326,17 +340,26 @@ double SignalWindows::phaseShift() const
 
 void SignalWindows::updateAnimatedGraphs()
 {
-    QCustomPlot* spectrumPlots[] = {
-        ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
-        ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
-        ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
-        ui->widget_13, ui->widget_14, ui->widget_15, ui->widget_16
-    };
-
+    QCustomPlot *spectrumPlots[] = {ui->widget,
+                                    ui->widget_2,
+                                    ui->widget_3,
+                                    ui->widget_4,
+                                    ui->widget_5,
+                                    ui->widget_6,
+                                    ui->widget_7,
+                                    ui->widget_8,
+                                    ui->widget_9,
+                                    ui->widget_10,
+                                    ui->widget_11,
+                                    ui->widget_12,
+                                    ui->widget_13,
+                                    ui->widget_14,
+                                    ui->widget_15,
+                                    ui->widget_16};
 
     // Параметры анимации
     double animPhase = fmod(rand(), rand());
-    const double decayFactor = 0.1;  // Скорость затухания пиков
+    const double decayFactor = 0.1;   // Скорость затухания пиков
     const double responseSpeed = 0.8; // Скорость реакции столбцов
 
     // Если это первый вызов, инициализируем предыдущие значения
@@ -348,7 +371,7 @@ void SignalWindows::updateAnimatedGraphs()
     QVector<double> animatedSpectrum(m_originalSpectrum.size());
     for (int i = 0; i < m_originalSpectrum.size(); i++) {
         // Добавляем небольшую случайную вибрацию для реалистичности
-        double noise = 0.9 + 0.1 * (rand() / (double)RAND_MAX);
+        double noise = 0.9 + 0.1 * (rand() / (double) RAND_MAX);
 
         // Плавное движение к целевому значению с эффектом инерции
         double targetValue = m_originalSpectrum[i] * noise;
@@ -379,7 +402,7 @@ void SignalWindows::updateAnimatedGraphs()
         stepSpectrum.append(animatedSpectrum[i]);
 
         if (i < m_freq.size() - 1) {
-            stepFreq.append(m_freq[i+1]);
+            stepFreq.append(m_freq[i + 1]);
             stepSpectrum.append(animatedSpectrum[i]);
         }
     }
@@ -399,7 +422,7 @@ void SignalWindows::updateAnimatedGraphs()
         spectrumPlots[i]->graph(0)->setLineStyle(QCPGraph::lsStepCenter);
 
         // Автомасштабирование только по вертикали
-      // spectrumPlots[i]->yAxis->rescale();
+        // spectrumPlots[i]->yAxis->rescale();
         spectrumPlots[i]->replot();
     }
 }
@@ -421,18 +444,14 @@ void SignalWindows::on_animationSpeedChanged(int speed)
 
 void SignalWindows::on_pb_params_signal_clicked()
 {
-
     Paramswindows *param = new Paramswindows(this);
-     param->move(this->pos());
-     param->show();
+    param->move(this->pos());
+    param->show();
 
-     this->hide();
-
+    this->hide();
 }
-
 
 void SignalWindows::on_p_signal_start_all_clicked()
 {
-     m_phaseAnimation->start();
+    m_phaseAnimation->start();
 }
-

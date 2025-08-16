@@ -29,7 +29,7 @@ private slots:
     void handlePlotClick(QMouseEvent *event);
     void handlePlotRelease(QMouseEvent *event);
     void handleDoubleClick(QMouseEvent *event);
-    void handleZoom(QWheelEvent* event);
+    void handleZoom(QWheelEvent *event);
     void updateAnimatedGraphs();
     void on_startAnimation_clicked();
     void on_stopAnimation_clicked();
@@ -42,7 +42,7 @@ private slots:
 private:
     Ui::SignalWindows *ui;
     bool m_rightButtonPressed = false;
-    QList<QCPAbstractPlottable*> m_lastSelection;
+    QList<QCPAbstractPlottable *> m_lastSelection;
 
     QPropertyAnimation *m_phaseAnimation;
     double m_phaseShift;

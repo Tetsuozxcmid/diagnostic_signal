@@ -23,8 +23,6 @@ private slots:
 private:
     Ui::Paramswindows *ui;
 
-
-
     void loadParams();
     void debugUIElements();
 };
