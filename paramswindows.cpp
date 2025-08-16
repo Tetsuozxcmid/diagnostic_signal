@@ -13,9 +13,7 @@ Paramswindows::Paramswindows(QWidget *parent)
     , ui(new Ui::Paramswindows)
 {
     ui->setupUi(this);
-
     debugUIElements();
-
     loadParams();
 }
 

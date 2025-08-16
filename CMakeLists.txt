@@ -24,7 +24,7 @@ set(PROJECT_SOURCES
     mainwindow.cpp mainwindow.h mainwindow.ui
     signalwindows.cpp signalwindows.h signalwindows.ui
     paramswindows.cpp paramswindows.h paramswindows.ui
-    qcustomplot.h qcustomplot.cpp device_simulator.cpp device_simulator.h
+    qcustomplot.h qcustomplot.cpp devicesimulator.cpp devicesimulator.h
 )
 
 

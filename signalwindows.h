@@ -4,8 +4,10 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QPropertyAnimation>
-#include "qcustomplot.h"
-#include <vector>
+#include <QTimer>
+#include <cmath>
+#include "qcustomplot.h" // Подключаем QCustomPlot
+#include "devicesimulator.h" // Подключаем DeviceSimulator
 
 namespace Ui {
 class SignalWindows;
@@ -34,10 +36,11 @@ private slots:
     void on_startAnimation_clicked();
     void on_stopAnimation_clicked();
     void on_animationSpeedChanged(int speed);
-
     void on_pb_params_signal_clicked();
-
     void on_p_signal_start_all_clicked();
+    void updateAllChannels();
+
+    void on_pb_params_update_clicked();
 
 private:
     Ui::SignalWindows *ui;
@@ -51,6 +54,14 @@ private:
     QVector<double> m_freq;
     QVector<double> m_originalSpectrum;
     QVector<double> m_animatedSpectrum;
+
+    QVector<QVector<double>> m_channelData;   // Данные для каждого канала
+    QList<DeviceSimulator*> m_simulators;     // Симуляторы для каждого канала
+    QTimer m_updateTimer;                     // Таймер для обновления
+
+    void initializeSimulators(const QMap<QString, QString>& params);
+    void setupPlot(int index);
+
 };
 
 #endif // SIGNALWINDOWS_H
