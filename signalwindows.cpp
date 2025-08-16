@@ -113,8 +113,8 @@ void SignalWindows::initializeSimulators(const QMap<QString, QString>& params)
     double fd = params["param5"].toDouble();
 
     for (int i = 0; i < 16; ++i) {
-        // Каждый канал может иметь свои параметры
-        double channelF = f * (i + 1); // Пример: каждый канал имеет другую частоту
+
+        double channelF = f * (i + 1);
         m_simulators.append(new DeviceSimulator(A, channelF, fd));
     }
 }
@@ -442,26 +442,26 @@ void SignalWindows::on_pb_params_update_clicked()
         }
     }
 
-    // Обновление симуляторов
+
     double A = params["param"].toDouble();
     double f = params["param2"].toDouble();
     double fd = params["param5"].toDouble();
 
     qDebug() << "Обновленные параметры: A =" << A << ", f =" << f << ", fd =" << fd;
 
-    // Очистка старых симуляторов
+
     qDeleteAll(m_simulators);
     m_simulators.clear();
 
-    // Создание новых симуляторов
+
     for (int i = 0; i < 16; ++i) {
-        double channelF = f * (i + 1); // Пример: каждый канал имеет другую частоту
+        double channelF = f * (i + 1);
         DeviceSimulator *simulator = new DeviceSimulator(A, channelF, fd);
         m_simulators.append(simulator);
         qDebug() << "Обновлен симулятор для канала" << i << "с частотой" << channelF;
     }
 
-    // Очистка данных каналов
+
     for (int i = 0; i < 16; ++i) {
         m_channelData[i].clear();
     }
