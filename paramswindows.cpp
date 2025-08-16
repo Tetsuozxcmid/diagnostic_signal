@@ -41,7 +41,8 @@ void Paramswindows::debugUIElements()
 
 void Paramswindows::loadParams()
 {
-    QString filePath = "/sandbox/users/malyshev/diag_test_last/diagnostic_mal_Med/params.ini";
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString filePath = appDir + "/params.ini";
     QFile file(filePath);
 
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -79,7 +80,8 @@ void Paramswindows::on_p_button_main_clicked()
 
 void Paramswindows::on_b_button_save_clicked()
 {
-    QString filePath = "/sandbox/users/malyshev/diag_test_last/diagnostic_mal_Med/params.ini";
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString filePath = appDir + "/params.ini";
 
     if (!ui->lineEdit || !ui->lineEdit_2 || !ui->lineEdit_5 || !ui->lineEdit_12 || !ui->lineEdit_8) {
         QMessageBox::critical(this, "Ошибка", "Не все элементы интерфейса инициализированы!");

@@ -17,7 +17,7 @@
 #include <fftw3.h>
 #include <iostream>
 #include <vector>
-//PISUN
+
 SignalWindows::SignalWindows(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::SignalWindows)
@@ -61,7 +61,8 @@ SignalWindows::SignalWindows(QWidget *parent)
     }
 
     QMap<QString, QString> params;
-    QString filePath = "/sandbox/users/malyshev/diag_test_last/diagnostic_mal_Med/params.ini";
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString filePath = appDir + "/params.ini";
     QFile paramFile(filePath);
 
     if (!paramFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
