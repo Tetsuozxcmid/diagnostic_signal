@@ -21,7 +21,11 @@ class SignalWindows : public QMainWindow
 public:
     explicit SignalWindows(QWidget *parent = nullptr);
     ~SignalWindows();
-
+struct ComplexSample {
+        double real;
+        double imag;
+        ComplexSample(double r = 0.0, double i = 0.0) : real(r), imag(i) {}
+};
 
 
 private slots:
@@ -54,7 +58,7 @@ private:
     void setupPlot(int index);
     QVector<QVector<double>> m_spectrumData;    // Спектры для каждого канала
     QVector<QVector<double>> m_frequencyData;   // Частоты для спектра
-
+    QVector<QVector<ComplexSample>> m_complexChannelData;
     void performFFT(int channelIndex);
     void updateSpectrumPlots();
 

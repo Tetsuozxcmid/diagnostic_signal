@@ -38,7 +38,7 @@ SignalWindows::SignalWindows(QWidget *parent)
     m_frequencyData.resize(16);
 
     connect(&m_updateTimer, &QTimer::timeout, this, &SignalWindows::updateAllChannels);
-    m_updateTimer.start(30); // 30 мс ~ 33 FPS
+    m_updateTimer.start(60); // 30 мс ~ 33 FPS
 
 
     QMap<QString, QString> params;
@@ -113,11 +113,27 @@ void SignalWindows::initializeSimulators(const QMap<QString, QString>& params)
     double n1 = params["param8"].toDouble();
     double n2 = params["param12"].toDouble();
     double N = n1-n2;
+    double minAmplitude = A * 0.3;           // Минимальная амплитуда (30% от базовой)
+    double maxAmplitude = A * 1.7;           // Максимальная амплитуда (170% от базовой)
+
+    double minFrequency = f * 0.5;           // Минимальная частота (50% от базовой)
+    double maxFrequency = f * 3.0;           // Максимальная частота (300% от базовой)
+
+    // Инициализация генератора случайных чисел
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> ampDist(minAmplitude, maxAmplitude);
+    std::uniform_real_distribution<> freqDist(minFrequency, maxFrequency);
+
     for (int i = 0; i < 16; ++i) {
+        // Генерируем случайные значения для каждого канала
+        double channelA = ampDist(gen);    // Случайная амплитуда
+        double channelF = freqDist(gen);   // Случайная частота
 
-        double channelF = f * (i + 1);
+        m_simulators.append(new DeviceSimulator(channelA, channelF, fd, N));
 
-        m_simulators.append(new DeviceSimulator(A, channelF, fd,N));
+        // Для отладки можно выводить значения
+        qDebug() << "Channel" << i << ": A =" << channelA << ", F =" << channelF;
     }
 }
 
@@ -170,7 +186,7 @@ void SignalWindows::updateAllChannels()
     static int updateCounter = 0;
 
     for (int i = 0; i < 16; ++i) {
-        double newValue = m_simulators[i]->generateSample();
+        double newValue = m_simulators[i]->generateSin();
 
         // Добавляем новое значение
         m_channelData[i].append(newValue);
@@ -384,15 +400,15 @@ void SignalWindows::handleZoom(QWheelEvent *event)
     bool zoomAllowed = true;
     if (event->angleDelta().y() > 0) {
         if ((xRange.size() < minZoomRangeX) || (yRange.size() < minZoomRangeY)) {
-            zoomAllowed = false;
+            zoomAllowed = true;
         }
     } else {
         if ((xRange.size() > maxZoomRangeX) || (yRange.size() > maxZoomRangeY)) {
-            zoomAllowed = false;
+            zoomAllowed = true;
         }
     }
 
- // plot->setInteraction(QCP::iRangeZoom, zoomAllowed);
+  plot->setInteraction(QCP::iRangeZoom, zoomAllowed);
 }
 
 
