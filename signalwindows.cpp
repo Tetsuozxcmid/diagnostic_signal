@@ -146,7 +146,7 @@ void SignalWindows::setupPlot(int index)
         return;
     }
 
-    qDebug() << "Инициализация графика для канала" << index;
+    qDebug() << "Инициализация графика канала" << index;
 
     plot->clearGraphs();
     plot->addGraph();
