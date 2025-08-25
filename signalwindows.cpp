@@ -17,23 +17,28 @@
 #include <iostream>
 #include <vector>
 
+
+
+
+
+
 SignalWindows::SignalWindows(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::SignalWindows)
-    , m_phaseAnimation(new QPropertyAnimation(this, "phaseShift", this))
-    , m_phaseShift(0)
+
 {
     ui->setupUi(this);
 
 
     m_channelData.resize(16);
     for (int i = 0; i < 16; ++i) {
-        m_channelData[i].resize(100, 0.0);
+        m_channelData[i].resize(1024);
     }
-
+    m_spectrumData.resize(16);
+    m_frequencyData.resize(16);
 
     connect(&m_updateTimer, &QTimer::timeout, this, &SignalWindows::updateAllChannels);
-    m_updateTimer.start(30); // 30 мс ~ 33 FPS
+    m_updateTimer.start(60); // 30 мс ~ 33 FPS
 
 
     QMap<QString, QString> params;
@@ -82,16 +87,10 @@ SignalWindows::SignalWindows(QWidget *parent)
     }
 
 
-    m_phaseAnimation->setStartValue(0);
-    m_phaseAnimation->setEndValue(0);
-    m_phaseAnimation->setDuration(1000);
-    m_phaseAnimation->setEasingCurve(QEasingCurve::Linear);
-    m_phaseAnimation->setLoopCount(-1);
+
 
     for (QCustomPlot *plot : plots) {
-        plot->setInteraction(QCP::iRangeZoom, true);
-        plot->setInteraction(QCP::iRangeDrag, true);
-        plot->setSelectionRectMode(QCP::srmNone);
+
         connect(plot, &QCustomPlot::mousePress, this, &SignalWindows::handlePlotClick);
         connect(plot, &QCustomPlot::mouseRelease, this, &SignalWindows::handlePlotRelease);
         connect(plot, &QCustomPlot::mouseDoubleClick, this, &SignalWindows::handleDoubleClick);
@@ -111,11 +110,30 @@ void SignalWindows::initializeSimulators(const QMap<QString, QString>& params)
     double A = params["param"].toDouble();
     double f = params["param2"].toDouble();
     double fd = params["param5"].toDouble();
+    double n1 = params["param8"].toDouble();
+    double n2 = params["param12"].toDouble();
+    double N = n1-n2;
+    double minAmplitude = A * 0.3;           // Минимальная амплитуда (30% от базовой)
+    double maxAmplitude = A * 1.7;           // Максимальная амплитуда (170% от базовой)
+
+    double minFrequency = f * 0.5;           // Минимальная частота (50% от базовой)
+    double maxFrequency = f * 3.0;           // Максимальная частота (300% от базовой)
+
+    // Инициализация генератора случайных чисел
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> ampDist(minAmplitude, maxAmplitude);
+    std::uniform_real_distribution<> freqDist(minFrequency, maxFrequency);
 
     for (int i = 0; i < 16; ++i) {
+        // Генерируем случайные значения для каждого канала
+        double channelA = ampDist(gen);    // Случайная амплитуда
+        double channelF = freqDist(gen);   // Случайная частота
 
-        double channelF = f * (i + 1);
-        m_simulators.append(new DeviceSimulator(A, channelF, fd));
+        m_simulators.append(new DeviceSimulator(channelA, channelF, fd, N));
+
+        // Для отладки можно выводить значения
+        qDebug() << "Channel" << i << ": A =" << channelA << ", F =" << channelF;
     }
 }
 
@@ -141,62 +159,184 @@ void SignalWindows::setupPlot(int index)
     case 15: plot = ui->widget_16; break;
     }
 
+<<<<<<< HEAD
     if (!plot) {
         qDebug() << "Ошибка: виджет QCustomPlot для канала" << index << "не найден.";
         return;
     }
 
     qDebug() << "Инициализация графика канала" << index;
+=======
+    if (!plot) return;
+>>>>>>> 0537f6c6e733195b6975b48bfc786be0ded399a2
 
     plot->clearGraphs();
     plot->addGraph();
+
+    // Настройка для спектра
     plot->graph(0)->setPen(QPen(QColor(100, 255, 100), 1.5));
+    plot->graph(0)->setBrush(QBrush(QColor(100, 255, 100, 50))); // Заполнение под графиком
 
-    // Настройка осей
-    plot->xAxis->setLabel("Time");
-    plot->yAxis->setLabel("Amplitude");
-    plot->xAxis->setRange(0, 100);
-    plot->yAxis->setRange(-1.5, 1.5);
+    // Настройка осей для спектра
+    plot->xAxis->setLabel("Частота, Гц");
+    plot->yAxis->setLabel("Амплитуда");
 
-    // Сетка
-    plot->xAxis->grid()->setPen(QPen(QColor(200, 200, 200), 0.5));
-    plot->yAxis->grid()->setPen(QPen(QColor(200, 200, 200), 0.5));
+    // Начальный диапазон (будет автоматически масштабироваться)
+
+
+    // Включаем легенду
+
 
     plot->replot();
 }
 
 void SignalWindows::updateAllChannels()
 {
+    static int updateCounter = 0;
 
     for (int i = 0; i < 16; ++i) {
-        double newValue = m_simulators[i]->generateSample();
+        double newValue = m_simulators[i]->generateSin();
+
+        // Добавляем новое значение
         m_channelData[i].append(newValue);
 
-
-        if (m_channelData[i].size() > 100) {
+        // Поддерживаем буфер достаточного размера для БПФ
+        int requiredSize = m_simulators[i]->Nindex();
+        while (m_channelData[i].size() > requiredSize * 2) {
             m_channelData[i].removeFirst();
         }
+
+        // Вычисляем спектр каждые 10 обновлений (чтобы успевали накопиться данные)
+        if (updateCounter % 10 == 0 && m_channelData[i].size() >= requiredSize) {
+            performFFT(i);
+        }
     }
 
+    // Обновляем графики каждый раз
+    updateSpectrumPlots();
 
-    QCustomPlot *plots[] = {ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
-                            ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
-                            ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
-                            ui->widget_13, ui->widget_14, ui->widget_15, ui->widget_16};
+    updateCounter++;
+}
+void SignalWindows::performFFT(int channelIndex)
+{
+    int N = m_simulators[channelIndex]->Nindex();
+    if (N <= 0 || m_channelData[channelIndex].size() < N) return;
 
-    for (int i = 0; i < 16; i++) {
-        if (!plots[i]) continue;
+    // Берем последние N samples
+    QVector<double> inputData = m_channelData[channelIndex].mid(m_channelData[channelIndex].size() - N);
 
-        QVector<double> x(m_channelData[i].size());
-        for (int j = 0; j < x.size(); ++j) {
-            x[j] = j;
+    fftw_complex *fftIn = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+    fftw_complex *fftOut = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N);
+
+    if (!fftIn || !fftOut) return;
+
+    // Простое заполнение без оконной функции для скорости
+    for (int j = 0; j < N; j++) {
+        fftIn[j][0] = inputData[j];
+        fftIn[j][1] = 0.0;
+    }
+
+    fftw_plan fftPlan = fftw_plan_dft_1d(N, fftIn, fftOut, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(fftPlan);
+
+    // ПОЛНЫЙ СПЕКТР (все частоты от -Fs/2 до +Fs/2)
+    QVector<double> fullSpectrum(N);
+    QVector<double> fullFrequencies(N);
+
+    double sampleRate = m_simulators[channelIndex]->FrequencyD();
+    double freqResolution = sampleRate / N;
+
+    for (int j = 0; j < N; j++) {
+        double real = fftOut[j][0];
+        double imag = fftOut[j][1];
+        fullSpectrum[j] = sqrt(real*real + imag*imag) / N;
+
+        // Частоты от -Fs/2 до +Fs/2 (правильный порядок для отображения)
+        if (j < N/2) {
+            // Положительные частоты (0 до Fs/2)
+            fullFrequencies[j] = j * freqResolution;
+        } else {
+            // Отрицательные частоты (-Fs/2 до 0)
+            fullFrequencies[j] = (j - N) * freqResolution;
         }
+    }
 
-        plots[i]->graph(0)->setData(x, m_channelData[i]);
-        plots[i]->replot();
+    // Переупорядочиваем для правильного отображения (от -Fs/2 до +Fs/2)
+    QVector<double> reorderedSpectrum(N);
+    QVector<double> reorderedFrequencies(N);
+
+    // Первая половина: отрицательные частоты
+    for (int j = N/2; j < N; j++) {
+        reorderedSpectrum[j - N/2] = fullSpectrum[j];
+        reorderedFrequencies[j - N/2] = fullFrequencies[j];
+    }
+
+    // Вторая половина: положительные частоты
+    for (int j = 0; j < N/2; j++) {
+        reorderedSpectrum[j + N/2] = fullSpectrum[j];
+        reorderedFrequencies[j + N/2] = fullFrequencies[j];
+    }
+
+    m_spectrumData[channelIndex] = reorderedSpectrum;
+    m_frequencyData[channelIndex] = reorderedFrequencies;
+
+    fftw_destroy_plan(fftPlan);
+    fftw_free(fftIn);
+    fftw_free(fftOut);
+}
+void SignalWindows::updateSpectrumPlots()
+{
+    QCustomPlot *spectrumPlots[] = {
+        ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
+        ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
+        ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
+        ui->widget_13, ui->widget_14, ui->widget_15, ui->widget_16
+    };
+
+    for (int i = 0; i < 16 && i < m_spectrumData.size(); i++) {
+        if (spectrumPlots[i] && !m_spectrumData[i].isEmpty()) {
+            // Отображаем полный спектр (все частоты)
+            spectrumPlots[i]->graph(0)->setData(m_frequencyData[i], m_spectrumData[i]);
+
+            double maxAmplit = 0;
+            double peakF = 0;
+            for (int j =0;j <m_spectrumData[i].size();j++) {
+                if (m_spectrumData[i][j] > maxAmplit) {
+                    maxAmplit = m_spectrumData[i][j];
+                    peakF = m_frequencyData[i][j];
+
+
+                }
+
+
+            }
+
+
+
+            // Настройка осей для спектра
+            spectrumPlots[i]->xAxis->setLabel("Частота, Гц");
+            spectrumPlots[i]->yAxis->setLabel("Амплитуда");
+                spectrumPlots[i]->yAxis->setTickLabels(false);
+            // ДИАПАЗОН ДЛЯ ПОЛНОГО СПЕКТРА (-Fs/2 до +Fs/2)
+            double sampleRate = m_simulators[i]->FrequencyD();
+            double nyquistFrequency = sampleRate / 2.0;
+
+            double xRange = nyquistFrequency * 2;
+            double xCenter = peakF;
+            //double maxAmplitude = *std::max_element(m_spectrumData[i].begin(), m_spectrumData[i].end());
+
+            spectrumPlots[i]->xAxis->setScaleType(QCPAxis::stLogarithmic);  //setRange(xCenter - xRange/2, xCenter + xRange/2);
+                spectrumPlots[i]->yAxis->setScaleType(QCPAxis::stLinear);
+           spectrumPlots[i]->yAxis->setRange(0, maxAmplit *1.1 );
+
+            // Обновление заголовка
+            spectrumPlots[i]->graph(0)->setName(QString("Спектр - Канал %1 \n Частота - %2 \n Частота Д - %3 \n Амплитуда - %4 ")
+                                                .arg(i+1).arg(m_simulators[i]->Frequency())
+                                                .arg(m_simulators[i]->FrequencyD()).arg(m_simulators[i]->Amlitude()));
+            spectrumPlots[i]->replot();
+        }
     }
 }
-
 void SignalWindows::handlePlotClick(QMouseEvent *event)
 {
     QCustomPlot *clickedPlot = qobject_cast<QCustomPlot *>(sender());
@@ -230,14 +370,13 @@ void SignalWindows::handleDoubleClick(QMouseEvent *event)
     QMenu menu(this);
     QAction *toggleAction = menu.addAction("Показать/Скрыть данные");
     QAction *saveAction = menu.addAction("Сохранить график");
-    QAction *animationAction = menu.addAction(
-        m_phaseAnimation->state() == QAbstractAnimation::Running ? "Остановить анимацию"
-                                                                 : "Запустить анимацию");
+
 
     QAction *selected = menu.exec(clickedPlot->mapToGlobal(event->pos()));
 
     if (selected == toggleAction) {
         bool isVisible = clickedPlot->legend->visible();
+
         clickedPlot->legend->setVisible(!isVisible);
         clickedPlot->replot();
     } else if (selected == saveAction) {
@@ -248,12 +387,8 @@ void SignalWindows::handleDoubleClick(QMouseEvent *event)
         if (!fileName.isEmpty()) {
             clickedPlot->savePng(fileName);
         }
-    } else if (selected == animationAction) {
-        if (m_phaseAnimation->state() == QAbstractAnimation::Running) {
-            m_phaseAnimation->pause();
-        } else {
-            m_phaseAnimation->start();
-        }
+    } else{
+
     }
 }
 
@@ -274,21 +409,17 @@ void SignalWindows::handleZoom(QWheelEvent *event)
     bool zoomAllowed = true;
     if (event->angleDelta().y() > 0) {
         if ((xRange.size() < minZoomRangeX) || (yRange.size() < minZoomRangeY)) {
-            zoomAllowed = false;
+            zoomAllowed = true;
         }
     } else {
         if ((xRange.size() > maxZoomRangeX) || (yRange.size() > maxZoomRangeY)) {
-            zoomAllowed = false;
+            zoomAllowed = true;
         }
     }
 
-    plot->setInteraction(QCP::iRangeZoom, zoomAllowed);
+  plot->setInteraction(QCP::iRangeZoom, zoomAllowed);
 }
 
-void SignalWindows::on_p_signal_stop_all_clicked()
-{
-    m_phaseAnimation->stop();
-}
 
 void SignalWindows::on_p_button_main_clicked()
 {
@@ -297,96 +428,7 @@ void SignalWindows::on_p_button_main_clicked()
     this->hide();
 }
 
-void SignalWindows::setPhaseShift(double shift)
-{
-    m_phaseShift = shift;
-    updateAnimatedGraphs();
-}
 
-double SignalWindows::phaseShift() const
-{
-    return m_phaseShift;
-}
-
-void SignalWindows::updateAnimatedGraphs()
-{
-    QCustomPlot *spectrumPlots[] = {ui->widget, ui->widget_2, ui->widget_3, ui->widget_4,
-                                    ui->widget_5, ui->widget_6, ui->widget_7, ui->widget_8,
-                                    ui->widget_9, ui->widget_10, ui->widget_11, ui->widget_12,
-                                    ui->widget_13, ui->widget_14, ui->widget_15, ui->widget_16};
-
-    double animPhase = fmod(rand(), rand());
-    const double decayFactor = 0.1;
-    const double responseSpeed = 0.8;
-
-    if (m_animatedSpectrum.isEmpty()) {
-        m_animatedSpectrum = m_originalSpectrum;
-    }
-
-    QVector<double> animatedSpectrum(m_originalSpectrum.size());
-    for (int i = 0; i < m_originalSpectrum.size(); i++) {
-        double noise = 0.9 + 0.1 * (rand() / (double) RAND_MAX);
-        double targetValue = m_originalSpectrum[i] * noise;
-        double currentValue = m_animatedSpectrum[i];
-
-        if (targetValue > currentValue) {
-            animatedSpectrum[i] = currentValue + (targetValue - currentValue) * responseSpeed;
-        } else {
-            animatedSpectrum[i] = currentValue * (1.0 - decayFactor);
-        }
-
-        double phaseFactor = 0.9 + 0.1 * sin(animPhase + i * 1);
-        animatedSpectrum[i] *= phaseFactor;
-    }
-
-    m_animatedSpectrum = animatedSpectrum;
-
-    QVector<double> stepFreq, stepSpectrum;
-    for (int i = 0; i < m_freq.size(); i++) {
-        stepFreq.append(m_freq[i]);
-        stepSpectrum.append(0);
-
-        stepFreq.append(m_freq[i]);
-        stepSpectrum.append(animatedSpectrum[i]);
-
-        if (i < m_freq.size() - 1) {
-            stepFreq.append(m_freq[i + 1]);
-            stepSpectrum.append(animatedSpectrum[i]);
-        }
-    }
-
-    for (int i = 0; i < 16; i++) {
-        spectrumPlots[i]->graph(0)->setData(stepFreq, stepSpectrum);
-
-        QPen graphPen;
-        graphPen.setColor(QColor(100, 255, 100));
-        graphPen.setWidthF(1.5);
-        spectrumPlots[i]->graph(0)->setPen(graphPen);
-
-        spectrumPlots[i]->graph(0)->setBrush(QBrush(QColor(100, 255, 100, 50)));
-        spectrumPlots[i]->graph(0)->setLineStyle(QCPGraph::lsStepCenter);
-
-        spectrumPlots[i]->replot();
-    }
-}
-
-void SignalWindows::on_startAnimation_clicked()
-{
-    m_phaseAnimation->start();
-}
-
-void SignalWindows::on_stopAnimation_clicked()
-{
-    m_phaseAnimation->stop();
-}
-
-void SignalWindows::on_animationSpeedChanged(int speed)
-{
-    m_phaseAnimation->setDuration(2000 * (1000 - speed) / 100);
-    int interval = 100 - speed; // 0-100 мс
-    if (interval < 10) interval = 10;
-    m_updateTimer.setInterval(interval);
-}
 
 void SignalWindows::on_pb_params_signal_clicked()
 {
@@ -396,10 +438,6 @@ void SignalWindows::on_pb_params_signal_clicked()
     this->hide();
 }
 
-void SignalWindows::on_p_signal_start_all_clicked()
-{
-    m_phaseAnimation->start();
-}
 
 
 void SignalWindows::on_pb_params_update_clicked()
@@ -446,7 +484,9 @@ void SignalWindows::on_pb_params_update_clicked()
     double A = params["param"].toDouble();
     double f = params["param2"].toDouble();
     double fd = params["param5"].toDouble();
-
+    double n1 = params["param8"].toDouble();
+    double n2 = params["param12"].toDouble();
+    double N = n1-n2;
     qDebug() << "Обновленные параметры: A =" << A << ", f =" << f << ", fd =" << fd;
 
 
@@ -455,8 +495,9 @@ void SignalWindows::on_pb_params_update_clicked()
 
 
     for (int i = 0; i < 16; ++i) {
-        double channelF = f * (i + 1);
-        DeviceSimulator *simulator = new DeviceSimulator(A, channelF, fd);
+        double channelF = f * (1 + i);
+    //double AF = A *1.3;
+        DeviceSimulator *simulator = new DeviceSimulator(A, f, fd,N);
         m_simulators.append(simulator);
         qDebug() << "Обновлен симулятор для канала" << i << "с частотой" << channelF;
     }
